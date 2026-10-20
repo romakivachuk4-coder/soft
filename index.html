@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>ShortForge AI</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,'Segoe UI',sans-serif}
+  :root{
+    --bg:#0a0a0a;--panel:#131313;--panel2:#1a1a1a;--border:#2a2a2a;--border-strong:#3a3a3a;
+    --text:#e8e8e8;--muted:#7a7a7a;--muted2:#a0a0a0;
+    --gold:#d4af37;--gold-bright:#f4d03f;--gold-glow:rgba(212,175,55,.25);
+    --success:#4caf50;--danger:#e74c3c;
+  }
+  body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+  .topbar{height:52px;background:linear-gradient(180deg,#0f0f0f,#0a0a0a);display:flex;align-items:center;padding:0 18px;gap:14px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .dots{display:flex;gap:8px}
+  .dot{width:12px;height:12px;border-radius:50%}
+  .dot.r{background:#e74c3c}.dot.y{background:#f39c12}.dot.g{background:#4caf50}
+  .brand{font-weight:800;font-size:15px;margin-left:10px}
+  .brand span{background:linear-gradient(135deg,#d4af37,#f4d03f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .spacer{flex:1}
+  .status-pill{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border)}
+  .status-pill.ok{color:var(--gold);background:rgba(212,175,55,.1);border-color:rgba(212,175,55,.25)}
+  .status-pill.err{color:var(--danger);background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.25)}
+
+  .layout{flex:1;display:flex;overflow:hidden}
+  .sidebar{width:96px;background:linear-gradient(180deg,#101010,#0a0a0a);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:8px;flex-shrink:0}
+  .tool{width:72px;height:72px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;color:var(--muted2);transition:.2s;border:1px solid transparent;user-select:none}
+  .tool:hover{background:var(--panel2);color:var(--gold-bright)}
+  .tool.active{background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(244,208,63,.08));color:var(--gold-bright);border-color:var(--gold);box-shadow:0 0 20px var(--gold-glow)}
+  .tool .icon{font-size:24px}
+  .tool .label{font-size:9px;font-weight:700;letter-spacing:.8px;text-align:center}
+  .divider{width:48px;height:1px;background:var(--border-strong);margin:8px 0}
+  .bottom{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+
+  .content{flex:1;overflow-y:auto;background:var(--bg)}
+  .screen{display:none;padding:28px 32px;min-height:100%;flex-direction:column}
+  .screen.active{display:flex}
+  .screen-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;padding-bottom:20px;border-bottom:1px solid var(--border);position:relative}
+  .screen-head::after{content:'';position:absolute;bottom:-1px;left:0;width:80px;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+  .screen-head h1{font-size:24px;font-weight:800}
+  .screen-head p{font-size:13px;color:var(--muted);margin-top:6px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .card.full{grid-column:1/-1}
+  .card h3{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold);margin-bottom:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .card h3::before{content:'';width:3px;height:14px;background:var(--gold);border-radius:2px}
+
+  .drop{border:2px dashed var(--border-strong);border-radius:12px;padding:32px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;transition:.2s;background:var(--panel2);margin-bottom:12px}
+  .drop:hover{border-color:var(--gold);color:var(--gold-bright)}
+  .drop .big{font-size:36px;display:block;margin-bottom:10px}
+
+  .file{display:flex;align-items:center;gap:12px;background:var(--panel2);padding:11px 13px;border-radius:10px;margin-top:10px;font-size:13px;border:1px solid var(--border)}
+  .file .info{flex:1;min-width:0}
+  .file .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ddd}
+  .file .meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .file .rm{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px 8px;font-size:14px;border-radius:4px}
+  .file .rm:hover{color:var(--danger);background:rgba(231,76,60,.1)}
+
+  .btn{background:linear-gradient(135deg,var(--gold),#b8941f);color:#0a0a0a;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:800;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{box-shadow:0 4px 16px var(--gold-glow)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.big{padding:18px 24px;font-size:15px;width:100%;justify-content:center;margin-top:20px;box-shadow:0 6px 24px var(--gold-glow)}
+  .btn.ghost{background:var(--panel2);color:var(--muted2);border:1px solid var(--border)}
+  .btn.ghost:hover{color:var(--gold-bright);border-color:var(--gold)}
+  .btn.sm{padding:7px 14px;font-size:12px}
+
+  .field{margin-bottom:14px}
+  .field label{font-size:12px;color:var(--muted2);margin-bottom:6px;display:flex;justify-content:space-between}
+  .field label b{color:var(--gold-bright)}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  input[type=text],input[type=number],select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+
+  .progress{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:16px;border:1px solid var(--border)}
+  .progress>div{height:100%;background:linear-gradient(90deg,#8a7020,var(--gold),var(--gold-bright));width:0%;transition:.3s;box-shadow:0 0 12px var(--gold-glow)}
+  .status{font-size:12px;color:var(--muted2);margin-top:10px;text-align:center}
+  .status.ok{color:var(--gold-bright);font-weight:700}
+  .status.err{color:var(--danger)}
+
+  .list-item{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);padding:10px 12px;border-radius:8px;margin-bottom:6px;font-size:13px;border:1px solid var(--border)}
+  .list-item a{color:var(--gold-bright);text-decoration:none;font-weight:700}
+  .list-item a:hover{text-decoration:underline}
+
+  .trans-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+  .trans-table th{text-align:left;padding:10px;color:var(--gold);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border-strong)}
+  .trans-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .trans-table td:first-child{color:var(--muted2);width:45%}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--panel2);border:1px solid var(--gold);border-left:4px solid var(--gold);padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.6);transform:translateX(400px);transition:.3s;z-index:100;max-width:340px}
+  .toast.show{transform:translateX(0)}
+  .toast.err{border-color:var(--danger);border-left-color:var(--danger)}
+
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:5px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+  <div class="brand">ShortForge <span>AI</span></div>
+  <div class="spacer"></div>
+  <div class="status-pill err" id="top-status">● Подключение...</div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="tool active" data-screen="cut"><span class="icon">🎞️</span><span class="label">НАРЕЗКА</span></div>
+    <div class="tool" data-screen="unique"><span class="icon">🔄</span><span class="label">УНИКАЛ</span></div>
+    <div class="tool" data-screen="translate"><span class="icon">🌐</span><span class="label">ПЕРЕВОД</span></div>
+    <div class="tool" data-screen="tts"><span class="icon">🎙️</span><span class="label">ОЗВУЧКА</span></div>
+    <div class="divider"></div>
+    <div class="tool" data-screen="files"><span class="icon">📁</span><span class="label">ФАЙЛЫ</span></div>
+    <div class="bottom">
+      <div class="tool" data-screen="about"><span class="icon">ℹ️</span><span class="label">О ПРОГ.</span></div>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- НАРЕЗКА -->
+    <div class="screen active" id="screen-cut">
+      <div class="screen-head"><div><h1>🎞️ Нарезка шортс</h1><p>Длинное видео → вертикальные ролики</p></div></div>
+      <div class="grid">
+        <div class="card">
+          <h3>Источник</h3>
+          <div class="drop" onclick="document.getElementById('cut-input').click()">
+            <span class="big">➕</span>Выбрать видео файлы
+          </div>
+          <input type="file" id="cut-input" accept="video/*" multiple style="display:none">
+          <div id="cut-files"></div>
+        </div>
+        <div class="card">
+          <h3>Параметры</h3>
+          <div class="field">
+            <label>Длина ролика <b id="cut-len-v">30 сек</b></label>
+            <input type="range" min="15" max="90" value="30" id="cut-len" oninput="document.getElementById('cut-len-v').textContent=this.value+' сек'">
+          </div>
+          <div class="field">
+            <label>Количество роликов</label>
+            <input type="number" value="5" min="1" max="30" id="cut-count">
+          </div>
+          <div class="field">
+            <label>Формат</label>
+            <select id="cut-format">
+              <option value="9:16">9:16 — Shorts / Reels / TikTok</option>
+              <option value="1:1">1:1 — Instagram</option>
+              <option value="16:9">16:9 — YouTube</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="btn big" onclick="runCut()" id="btn-cut">🚀 Нарезать</button>
+      <div class="progress"><div id="prog-cut"></div></div>
+      <div class="status" id="status-cut">Готов к работе</div>
+    </div>
+
+    <!-- УНИКАЛИЗАЦИЯ -->
+    <div class="screen" id="screen-unique">
+      <div class="screen-head"><div><h1>🔄 Уникализация</h1><p>Создание уникальных копий</p></div></div>
+      <div class="grid">
+        <div class="card">
+          <h3>Ролики</h3>
+          <div class="drop" onclick="document.getElementById('uniq-input').click()">
+            <span class="big">➕</span>Выбрать видео
+          </div>
+          <input type="file" id="uniq-input" accept="video/*" multiple style="display:none">
+          <div id="uniq-files"></div>
+        </div>
+        <div class="card">
+          <h3>Настройки</h3>
+          <div class="field">
+            <label>Копий <b id="uniq-copies-v">5</b></label>
+            <input type="range" min="1" max="10" value="5" id="uniq-copies" oninput="document.getElementById('uniq-copies-v').textContent=this.value">
+          </div>
+          <div class="field">
+            <label>Интенсивность <b id="uniq-int-v">50%</b></label>
+            <input type="range" min="0" max="100" value="50" id="uniq-int" oninput="document.getElementById('uniq-int-v').textContent=this.value+'%'">
+          </div>
+        </div>
+      </div>
+      <button class="btn big" onclick="runUnique()" id="btn-uniq">✨ Уникализировать</button>
+      <div class="progress"><div id="prog-uniq"></div></div>
+      <div class="status" id="status-uniq">Готов к работе</div>
+    </div>
+
+    <!-- ПЕРЕВОД -->
+    <div class="screen" id="screen-translate">
+      <div class="screen-head"><div><h1>🌐 Перевод</h1><p>EN → RU субтитры через Whisper</p></div></div>
+      <div class="grid">
+        <div class="card">
+          <h3>Видео</h3>
+          <div class="drop" onclick="document.getElementById('tr-input').click()">
+            <span class="big">➕</span>Выбрать видео
+          </div>
+          <input type="file" id="tr-input" accept="video/*" style="display:none">
+          <div id="tr-files"></div>
+        </div>
+        <div class="card">
+          <h3>Языки</h3>
+          <div class="field">
+            <label>С языка</label>
+            <select id="tr-src"><option value="en">English</option><option value="ru">Русский</option></select>
+          </div>
+          <div class="field">
+            <label>На язык</label>
+            <select id="tr-dst"><option value="ru">Русский</option><option value="en">English</option></select>
+          </div>
+        </div>
+        <div class="card full">
+          <h3>Субтитры</h3>
+          <div id="tr-result"><p style="color:var(--muted);text-align:center;padding:20px;font-size:13px">Нажмите «Перевести»</p></div>
+        </div>
+      </div>
+      <button class="btn big" onclick="runTranslate()" id="btn-tr">🌐 Перевести</button>
+      <div class="progress"><div id="prog-tr"></div></div>
+      <div class="status" id="status-tr">Готов к работе</div>
+    </div>
+
+    <!-- ОЗВУЧКА -->
+    <div class="screen" id="screen-tts">
+      <div class="screen-head"><div><h1>🎙️ AI-озвучка</h1><p>Русский синтез через edge-tts</p></div></div>
+      <div class="grid">
+        <div class="card">
+          <h3>Текст</h3>
+          <div class="field">
+            <label>Что озвучить</label>
+            <textarea id="tts-text" rows="6" placeholder="Введите текст...">Привет! Это тестовая озвучка ShortForge AI. Программа работает.</textarea>
+          </div>
+          <div class="field">
+            <label>Голос</label>
+            <select id="tts-voice">
+              <option value="alexey">Алексей — мужской</option>
+              <option value="maria">Мария — женский</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Результат</h3>
+          <div id="tts-result" style="font-size:13px;color:var(--muted)">Ещё не создано</div>
+        </div>
+      </div>
+      <button class="btn big" onclick="runTTS()" id="btn-tts">🎙️ Сгенерировать</button>
+      <div class="progress"><div id="prog-tts"></div></div>
+      <div class="status" id="status-tts">Готов к работе</div>
+    </div>
+
+    <!-- ФАЙЛЫ -->
+    <div class="screen" id="screen-files">
+      <div class="screen-head"><div><h1>📁 Готовые файлы</h1><p>Все результаты</p></div></div>
+      <div class="card">
+        <h3>Результаты</h3>
+        <div id="out-list"><p style="color:var(--muted);text-align:center;padding:20px;font-size:13px">Пусто</p></div>
+        <button class="btn ghost sm" style="margin-top:14px" onclick="loadOutFiles()">🔄 Обновить</button>
+      </div>
+    </div>
+
+    <!-- О ПРОГРАММЕ -->
+    <div class="screen" id="screen-about">
+      <div class="screen-head"><div><h1>ℹ️ О программе</h1></div></div>
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:56px;margin-bottom:20px">✨</div>
+        <h2 style="color:var(--gold-bright);margin-bottom:10px">ShortForge AI v0.3</h2>
+        <p style="color:var(--muted2);font-size:13px;line-height:1.7">Python + FastAPI + FFmpeg + Whisper<br>Нарезка · Уникализация · Перевод · TTS</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:8765';
+const files = { cut: [], uniq: [], tr: [] };
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.tool[data-screen]').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tool').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + t.dataset.screen).classList.add('active');
+  };
+});
+
+// ===== TOAST =====
+function toast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err ? ' err' : '');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ===== HEALTH =====
+async function checkHealth() {
+  const el = document.getElementById('top-status');
+  try {
+    const r = await fetch(API + '/api/health');
+    const d = await r.json();
+    el.className = 'status-pill ' + (d.ffmpeg ? 'ok' : 'err');
+    el.textContent = d.ffmpeg ? '● Готов · FFmpeg OK' : '● FFmpeg не найден';
+  } catch {
+    el.className = 'status-pill err';
+    el.textContent = '● Бэкенд офлайн';
+  }
+}
+checkHealth(); setInterval(checkHealth, 10000);
+
+// ===== FILES =====
+function addFiles(section, fileList) {
+  for (const f of fileList) {
+    files[section].push({ path: f.path || f.name, name: f.name });
+  }
+  renderFiles(section);
+}
+function renderFiles(section) {
+  const el = document.getElementById(section + '-files');
+  el.innerHTML = files[section].map((f, i) => `
+    <div class="file">
+      <div class="info"><div class="name">${f.name}</div><div class="meta">${f.path}</div></div>
+      <button class="rm" onclick="removeFile('${section}',${i})">✕</button>
+    </div>
+  `).join('');
+}
+function removeFile(section, i) { files[section].splice(i, 1); renderFiles(section); }
+
+// В браузере нет доступа к полному пути файла, поэтому используем локальный API.
+// Пользователь копирует файлы в папку input, а бэкенд их находит.
+document.getElementById('cut-input').onchange = async (e) => {
+  const fd = new FormData();
+  for (const f of e.target.files) fd.append('files', f);
+  const r = await fetch(API + '/api/upload', { method: 'POST', body: fd });
+  const d = await r.json();
+  addFiles('cut', d.saved || []);
+  toast(`Загружено ${d.saved?.length || 0} файлов`);
+};
+document.getElementById('uniq-input').onchange = async (e) => {
+  const fd = new FormData();
+  for (const f of e.target.files) fd.append('files', f);
+  const r = await fetch(API + '/api/upload', { method: 'POST', body: fd });
+  const d = await r.json();
+  addFiles('uniq', d.saved || []);
+  toast(`Загружено ${d.saved?.length || 0} файлов`);
+};
+document.getElementById('tr-input').onchange = async (e) => {
+  const fd = new FormData();
+  for (const f of e.target.files) fd.append('files', f);
+  const r = await fetch(API + '/api/upload', { method: 'POST', body: fd });
+  const d = await r.json();
+  addFiles('tr', d.saved || []);
+  toast(`Загружено ${d.saved?.length || 0} файлов`);
+};
+
+// ===== PROGRESS =====
+async function pollJob(jobId, section) {
+  const prog = document.getElementById('prog-' + section);
+  const status = document.getElementById('status-' + section);
+  return new Promise(resolve => {
+    const iv = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/api/job/${jobId}`);
+        const d = await r.json();
+        prog.style.width = (d.progress || 0) + '%';
+        if (d.status === 'done') {
+          clearInterval(iv);
+          status.className = 'status ok';
+          status.textContent = `✅ Готово! ${d.outputs?.length || 0} файлов в ~/Movies/ShortForge/`;
+          if (d.errors?.length) toast('Ошибок: ' + d.errors.length, true);
+          resolve(d);
+        } else {
+          status.className = 'status';
+          status.textContent = `Обработка... ${d.progress || 0}%`;
+        }
+      } catch { clearInterval(iv); resolve({}); }
+    }, 500);
+  });
+}
+
+// ===== RUN CUT =====
+async function runCut() {
+  if (!files.cut.length) return toast('Добавь видео', true);
+  document.getElementById('btn-cut').disabled = true;
+  try {
+    const r = await fetch(API + '/api/cut', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        files: files.cut.map(f => f.path),
+        length: +document.getElementById('cut-len').value,
+        count: +document.getElementById('cut-count').value,
+        format: document.getElementById('cut-format').value
+      })
+    });
+    const d = await r.json();
+    await pollJob(d.job_id, 'cut');
+  } catch (e) { toast('Ошибка: ' + e.message, true); }
+  document.getElementById('btn-cut').disabled = false;
+}
+
+// ===== RUN UNIQUE =====
+async function runUnique() {
+  if (!files.uniq.length) return toast('Добавь видео', true);
+  document.getElementById('btn-uniq').disabled = true;
+  try {
+    const r = await fetch(API + '/api/unique', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        files: files.uniq.map(f => f.path),
+        copies: +document.getElementById('uniq-copies').value,
+        intensity: +document.getElementById('uniq-int').value
+      })
+    });
+    const d = await r.json();
+    await pollJob(d.job_id, 'uniq');
+  } catch (e) { toast('Ошибка: ' + e.message, true); }
+  document.getElementById('btn-uniq').disabled = false;
+}
+
+// ===== RUN TRANSLATE =====
+async function runTranslate() {
+  if (!files.tr.length) return toast('Добавь видео', true);
+  document.getElementById('btn-tr').disabled = true;
+  try {
+    const r = await fetch(API + '/api/translate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file: files.tr[0].path,
+        src: document.getElementById('tr-src').value,
+        dst: document.getElementById('tr-dst').value
+      })
+    });
+    const d = await r.json();
+    const result = await pollJob(d.job_id, 'tr');
+    if (result.segments?.length) {
+      document.getElementById('tr-result').innerHTML = `
+        <table class="trans-table">
+          <tr><th>Оригинал</th><th>Перевод</th></tr>
+          ${result.segments.map(s => `<tr><td>${s.src}</td><td>${s.dst}</td></tr>`).join('')}
+        </table>`;
+    }
+  } catch (e) { toast('Ошибка: ' + e.message, true); }
+  document.getElementById('btn-tr').disabled = false;
+}
+
+// ===== RUN TTS =====
+async function runTTS() {
+  document.getElementById('btn-tts').disabled = true;
+  try {
+    const r = await fetch(API + '/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        voice: document.getElementById('tts-voice').value,
+        text: document.getElementById('tts-text').value
+      })
+    });
+    const d = await r.json();
+    const result = await pollJob(d.job_id, 'tts');
+    if (result.outputs?.length) {
+      document.getElementById('tts-result').innerHTML = `
+        <audio controls style="width:100%;margin-top:10px">
+          <source src="${API}/api/download/${result.outputs[0]}" type="audio/mpeg">
+        </audio>
+        <p style="margin-top:10px;font-size:12px;color:var(--muted)">
+          <a href="${API}/api/download/${result.outputs[0]}" download style="color:var(--gold-bright)">📥 Скачать MP3</a>
+        </p>`;
+    }
+  } catch (e) { toast('Ошибка: ' + e.message, true); }
+  document.getElementById('btn-tts').disabled = false;
+}
+
+// ===== OUT FILES =====
+async function loadOutFiles() {
+  try {
+    const r = await fetch(API + '/api/out-files');
+    const d = await r.json();
+    const el = document.getElementById('out-list');
+    if (!d.files?.length) {
+      el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;font-size:13px">Пусто</p>';
+      return;
+    }
+    el.innerHTML = d.files.map(f => `
+      <div class="list-item">
+        <span>${f.name} <small style="color:var(--muted)">(${f.size_mb} MB)</small></span>
+        <a href="${API}/api/download/${f.name}" download>📥 Скачать</a>
+      </div>
+    `).join('');
+  } catch { toast('Не удалось загрузить список', true); }
+}
+
+// Автозагрузка при переходе на экран файлов
+document.querySelector('.tool[data-screen="files"]').addEventListener('click', loadOutFiles);
+</script>
+</body>
+</html>
